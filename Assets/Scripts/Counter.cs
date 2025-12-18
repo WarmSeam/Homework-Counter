@@ -1,57 +1,61 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class Counter : MonoBehaviour
 {
-    [SerializeField] private Button _button;
-    [SerializeField] private float _timeInterval = 0.5f;
-    [SerializeField] private TextMeshProUGUI _countDisplay;
+    [SerializeField] private MouseInput _mouseInput;
+    [SerializeField] private float _countingInterval = 0.5f;
+    [NonSerialized] public int InitialCount;
 
-    private bool _isActive;
-    private int _currentCount;
+    private Coroutine _countingCoroutine;
+    private WaitForSeconds _intervalWait;
 
-    private void Start()
+    private int _count = 0;
+
+
+    public event UnityAction<int> Changed;
+
+    private void Awake()
     {
-        _countDisplay.text = "0";
-
-        if (int.TryParse(_countDisplay.text, out int result))
-            _currentCount = result;
-        else
-            _currentCount = 0;
-
-        _isActive = false;
+        _intervalWait = new WaitForSeconds(_countingInterval);
+        InitialCount = _count;
     }
 
     private void OnEnable()
     {
-        _button.Clicked += ToggleCounter;
+       _mouseInput.Clicked += Toggle;
     }
 
     private void OnDisable()
     {
-        _button.Clicked -= ToggleCounter;
+       _mouseInput.Clicked -= Toggle;
     }
 
-    private void ToggleCounter()
+    private void Toggle()
     {
-        _isActive = !_isActive;
-
-        StartCoroutine(TimerCoroutine());
-    }
-
-    private IEnumerator TimerCoroutine()
-    {
-        while (_isActive)
+        if (_countingCoroutine == null)
         {
-            _currentCount++;
-            _countDisplay.text = _currentCount.ToString();
-
-            yield return new WaitForSeconds(_timeInterval);
+            _countingCoroutine = StartCoroutine(Counting());
         }
+        else
+        {
+            StopCoroutine(_countingCoroutine);
+            _countingCoroutine = null;
+        }
+    }
 
-        yield break;
+    private IEnumerator Counting()
+    {
+        while (true)
+        {
+            _count++;
+            Changed?.Invoke(_count);
+            yield return _intervalWait;
+        }
     }
 }
